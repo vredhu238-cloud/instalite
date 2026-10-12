@@ -13,7 +13,7 @@ function listen() {
     const m = p.new;
     if (view === 'chat' && cp && m.sender_id === cp.id) { addBub(m); sb.from('messages').update({ read: true }).eq('id', m.id).then(() => {}); }
     else if (view === 'inbox') render();
-    else toast('Naya message aaya');
+    else toast('New message');
   }).subscribe();
 }
 
@@ -26,8 +26,8 @@ async function inbox() {
   const others = (await sb.from('profiles').select('id,username').neq('id', me.id).limit(20)).data || [];
   others.forEach(p => peers[p.id] = p.username);
   return '<div style="padding:14px"><b style="font-size:18px">Messages</b></div>' +
-    (ids.length ? ids.map(o => `<div class="row" data-a="dmopen" data-id="${o}" style="cursor:pointer">${av(peers[o], 48)}<div class="sp"><b>${esc(peers[o])}</b><div style="color:var(--mut)">${last[o].sender_id === me.id ? 'Aap: ' : ''}${esc(last[o].body.slice(0, 40))}</div></div>${unread[o] ? `<span class="cnt" style="position:static;background:var(--blue)">${unread[o]}</span>` : ''}</div>`).join('') : '<div class="empty" style="padding:24px">Abhi koi chat nahi</div>') +
-    '<div style="padding:14px 14px 4px;color:var(--mut)"><b>Naya message bhejo</b></div>' +
+    (ids.length ? ids.map(o => `<div class="row" data-a="dmopen" data-id="${o}" style="cursor:pointer">${av(peers[o], 48)}<div class="sp"><b>${esc(peers[o])}</b><div style="color:var(--mut)">${last[o].sender_id === me.id ? 'You: ' : ''}${esc(last[o].body.slice(0, 40))}</div></div>${unread[o] ? `<span class="cnt" style="position:static;background:var(--blue)">${unread[o]}</span>` : ''}</div>`).join('') : '<div class="empty" style="padding:24px">No chats yet</div>') +
+    '<div style="padding:14px 14px 4px;color:var(--mut)"><b>Start a new message</b></div>' +
     others.filter(p => !last[p.id]).map(p => `<div class="row" data-a="dmopen" data-id="${p.id}" style="cursor:pointer">${av(p.username, 40)}<b>${esc(p.username)}</b></div>`).join('');
 }
 
@@ -38,8 +38,8 @@ async function chat() {
   await sb.from('messages').update({ read: true }).eq('receiver_id', me.id).eq('sender_id', cp.id).eq('read', false);
   setTimeout(() => { const b = $('#msgs'); if (b) b.scrollTop = b.scrollHeight; const i = $('#dmi'); if (i) i.focus(); }, 80);
   return `<div class="row" style="border-bottom:1px solid var(--line)"><button data-a="dmback" aria-label="Back" style="font-size:22px">&larr;</button>${av(cp.username, 32)}<b data-a="prof" data-u="${esc(cp.username)}" style="cursor:pointer">${esc(cp.username)}</b></div>
-  <div id="msgs" style="padding:12px;height:calc(100vh - 230px);overflow-y:auto;display:flex;flex-direction:column;gap:6px">${(data || []).map(bub).join('') || '<div class="empty">Pehla message bhejo</div>'}</div>
-  <div class="cin" style="padding:8px 12px"><input id="dmi" placeholder="Message likho..." maxlength="500"><button data-a="dmsend">Bhejo</button></div>`;
+  <div id="msgs" style="padding:12px;height:calc(100vh - 230px);overflow-y:auto;display:flex;flex-direction:column;gap:6px">${(data || []).map(bub).join('') || '<div class="empty">Send the first message</div>'}</div>
+  <div class="cin" style="padding:8px 12px"><input id="dmi" placeholder="Message..." maxlength="500"><button data-a="dmsend">Send</button></div>`;
 }
 
 async function dmSend() {
