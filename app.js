@@ -50,9 +50,9 @@ function go(v, u = null) { view = v; pu = u; closeOv(); render(); scrollTo(0, 0)
 async function render() {
   document.body.classList.remove('au');
   nav(); side();
-  if (typeof listen === 'function') listen(); const V = { home, explore, create, profile, activity, inbox, chat };
+  if (typeof listen === 'function') listen(); await ensureSaves(); badges(); const V = { home, explore, create, profile, activity: notifs, inbox, chat, saved };
   $('#app').innerHTML = '<div class="empty">Load ho raha hai...</div>';
-  $('#app').innerHTML = await V[view]();
+  $('#app').innerHTML = (view === 'home' && typeof storiesBar === 'function' ? await storiesBar() : '') + await V[view]();
 }
 function nav() {
   const L = [['home','home','Home'],['search','explore','Search'],['plus','create','Create'],['heart','activity','Activity'],['send','inbox','Messages'],['user','profile','Profile']];
@@ -73,7 +73,7 @@ const postH = p => {
   const cm = [...p.comments].sort((a, b) => a.id - b.id);
   return `<article class="post" data-id="${p.id}"><div class="ph">${av(u)}<b data-a="prof" data-u="${u}">${esc(u)}</b><small>&bull; ${ago(p.created_at)}</small><span class="sp"></span>${p.user_id === me.id ? `<button data-a="del" data-id="${p.id}" aria-label="Delete">&#128465;</button>` : ''}</div>
   <div class="media" data-a="dbl" data-id="${p.id}">${imgTag(p)}</div>
-  <div class="acts">${ic('heart', liked ? 'liked' : '', `data-a="like" data-id="${p.id}"`, 'Like')}${ic('cm', '', `data-a="focus" data-id="${p.id}"`, 'Comment')}${ic('send', '', 'data-a="shr"', 'Share')}</div>
+  <div class="acts">${ic('heart', liked ? 'liked' : '', `data-a="like" data-id="${p.id}"`, 'Like')}${ic('cm', '', `data-a="focus" data-id="${p.id}"`, 'Comment')}${ic('send', '', 'data-a="shr"', 'Share')}<span class="r">${ic('mark', mySaves.has(p.id) ? 'saved' : '', `data-a="save" data-id="${p.id}"`, 'Save')}</span></div>
   <div class="pad"><b>${p.likes.length} likes</b><div><b>${esc(u)}</b> ${esc(p.caption || '')}</div>${cm.map(c => `<div><b>${esc(c.profiles.username)}</b> ${esc(c.body)}</div>`).join('')}</div>
   <div class="cin"><input placeholder="Comment likho..." maxlength="200" data-c="${p.id}"><button data-a="cmt" data-id="${p.id}">Post</button></div></article>`;
 };
@@ -144,7 +144,7 @@ async function profile() {
   cache = po.data || []; const mine = pr.id === me.id;
   return `<div class="pro"><div class="top">${av(pr.username, 80)}<div class="stat"><div><b>${cache.length}</b>posts</div><div><b>${fr}</b>followers</div><div><b>${fg}</b>following</div></div></div>
   <div style="margin:10px 0"><b>${esc(pr.username)}</b><div>${esc(pr.bio || '')}</div></div>
-  ${mine ? '<button class="btn g" data-a="bio" style="width:100%">Bio badlo</button><button class="btn g" data-a="out" style="width:100%;margin-top:8px">Logout</button>' : fbtn(pr.id).replace('class="btn', 'style="width:100%" class="btn')}</div>` + tiles(cache);
+  ${mine ? '<button class="btn g" data-a="bio" style="width:100%">Bio badlo</button><button class="btn g" data-a="gosaved" style="width:100%;margin-top:8px">Saved posts</button><button class="btn g" data-a="out" style="width:100%;margin-top:8px">Logout</button>' : fbtn(pr.id).replace('class="btn', 'style="width:100%" class="btn') + '<button class="btn g" data-a="dmuser" data-id="' + pr.id + '" data-u="' + esc(pr.username) + '" style="width:100%;margin-top:8px">Message</button>'}</div>` + tiles(cache);
 }
 async function follow(id) {
   if (fol.has(id)) { fol.delete(id); await sb.from('follows').delete().match({ follower_id: me.id, following_id: id }); }
