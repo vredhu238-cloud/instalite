@@ -5,7 +5,7 @@ const G = [['#f09433','#bc1888'],['#43cea2','#185a9d'],['#667eea','#764ba2'],['#
 const hash = s => [...s].reduce((a, c) => a * 31 + c.charCodeAt(0) >>> 0, 7);
 const av = (u, s = 32) => { const g = G[hash(u) % G.length]; return `<span class="av" style="--s:${s}px;background:linear-gradient(135deg,${g[0]},${g[1]})">${esc(u[0].toUpperCase())}</span>`; };
 const FIL = {Normal:'', Clarendon:'contrast(1.2) saturate(1.35)', Moon:'grayscale(1) contrast(1.1) brightness(1.1)', Juno:'sepia(.35) contrast(1.15) brightness(1.15) saturate(1.8)', Noir:'grayscale(1) contrast(1.5) brightness(.9)'};
-const ICO = {home:'<path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/>', search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/>', plus:'<rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/>', heart:'<path d="M12 21s-8-5.2-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.8-8 11-8 11z"/>', user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', cm:'<path d="M21 12a8 8 0 01-11.7 7L3 21l2-6A8 8 0 1121 12z"/>', send:'<path d="M22 3L2 10.5l7.5 3L12.5 21z"/><path d="M22 3L9.5 13.5"/>',reel:'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M10 8.5l5 3.5-5 3.5z"/>'};
+const ICO = {home:'<path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/>', search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/>', plus:'<rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/>', heart:'<path d="M12 21s-8-5.2-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.8-8 11-8 11z"/>', user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', cm:'<path d="M21 12a8 8 0 01-11.7 7L3 21l2-6A8 8 0 1121 12z"/>', send:'<path d="M22 3L2 10.5l7.5 3L12.5 21z"/><path d="M22 3L9.5 13.5"/>'};
 const ic = (n, cls, a, l) => `<button class="ic ${cls}" ${a} aria-label="${l}"><svg viewBox="0 0 24 24">${ICO[n]}</svg></button>`;
 const ago = t => { const m = (Date.now() - new Date(t)) / 6e4; return m < 1 ? 'abhi' : m < 60 ? (m | 0) + ' min' : m < 1440 ? (m / 60 | 0) + ' ghante' : (m / 1440 | 0) + ' din'; };
 const Q = '*,profiles!posts_user_id_fkey(username),likes(user_id),comments(id,body,created_at,profiles(username))';
@@ -50,12 +50,12 @@ function go(v, u = null) { view = v; pu = u; closeOv(); render(); scrollTo(0, 0)
 async function render() {
   document.body.classList.remove('au');
   nav(); side();
-  if (typeof listen === 'function') listen(); await ensureSaves(); await ensureB(); badges(); const V = { home, explore, create, profile, activity: notifs, inbox, chat, saved, tag: tagPage, requests, reels };
+  if (typeof listen === 'function') listen(); await ensureSaves(); badges(); const V = { home, explore, create, profile, activity: notifs, inbox, chat, saved };
   $('#app').innerHTML = '<div class="empty">Load ho raha hai...</div>';
   $('#app').innerHTML = (view === 'home' && typeof storiesBar === 'function' ? await storiesBar() : '') + await V[view]();
 }
 function nav() {
-  const L = [['home','home','Home'],['search','explore','Search'],['plus','create','Create'],['heart','activity','Activity'],['reel','reels','Reels'],['send','inbox','Messages'],['user','profile','Profile']];
+  const L = [['home','home','Home'],['search','explore','Search'],['plus','create','Create'],['heart','activity','Activity'],['send','inbox','Messages'],['user','profile','Profile']];
   $('#nav').innerHTML = '<div class="slogo"><span class="logo"><i class="lg"></i>InstaLite</span></div>' +
     L.map(([i, v, l]) => `<button class="ic nv ${view === v && !pu ? 'on' : ''}" data-a="nav" data-v="${v}" aria-label="${l}"><svg viewBox="0 0 24 24">${ICO[i]}</svg><span class="lb">${l}</span></button>`).join('') +
     '<button class="ic nv th" data-a="theme" aria-label="Theme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg><span class="lb">Theme</span></button>';
@@ -71,8 +71,8 @@ const imgTag = p => `<img src="${p.image_url}" alt="${esc(p.caption || '')}" sty
 const postH = p => {
   const u = p.profiles.username, liked = p.likes.some(l => l.user_id === me.id);
   const cm = [...p.comments].sort((a, b) => a.id - b.id);
-  return `<article class="post" data-id="${p.id}"><div class="ph">${av(u)}<b data-a="prof" data-u="${u}">${esc(u)}</b><small>&bull; ${ago(p.created_at)}</small><span class="sp"></span>${p.user_id === me.id ? `<button data-a="editcap" data-id="${p.id}" style="margin-right:12px">Edit</button><button data-a="del" data-id="${p.id}" aria-label="Delete">&#128465;</button>` : ''}</div>
-  <div class="media" data-a="dbl" data-id="${p.id}">${feed(p)}</div>
+  return `<article class="post" data-id="${p.id}"><div class="ph">${av(u)}<b data-a="prof" data-u="${u}">${esc(u)}</b><small>&bull; ${ago(p.created_at)}</small><span class="sp"></span>${p.user_id === me.id ? `<button data-a="del" data-id="${p.id}" aria-label="Delete">&#128465;</button>` : ''}</div>
+  <div class="media" data-a="dbl" data-id="${p.id}">${imgTag(p)}</div>
   <div class="acts">${ic('heart', liked ? 'liked' : '', `data-a="like" data-id="${p.id}"`, 'Like')}${ic('cm', '', `data-a="focus" data-id="${p.id}"`, 'Comment')}${ic('send', '', 'data-a="shr"', 'Share')}<span class="r">${ic('mark', mySaves.has(p.id) ? 'saved' : '', `data-a="save" data-id="${p.id}"`, 'Save')}</span></div>
   <div class="pad"><b>${p.likes.length} likes</b><div><b>${esc(u)}</b> ${fmt(p.caption || '')}</div>${cm.map(c => `<div><b>${esc(c.profiles.username)}</b> ${fmt(c.body)}${c.profiles.username === me.username ? ' <button data-a="delcm" data-id="' + c.id + '" aria-label="Comment delete" style="color:var(--mut)">&times;</button>' : ''}</div>`).join('')}</div>
   <div class="cin"><input placeholder="Comment likho..." maxlength="200" data-c="${p.id}"><button data-a="cmt" data-id="${p.id}">Post</button></div></article>`;
@@ -118,11 +118,11 @@ const shrink = f => new Promise(ok => { const im = new Image(); im.onload = () =
 function create() {
   file = null;
   return `<div style="padding:16px 14px;display:grid;gap:12px"><b style="font-size:18px">Nayi post</b>
-  <label class="btn g" style="text-align:center;cursor:pointer">&#128247; Photo chuno<input type="file" id="files" accept="image/*" multiple hidden></label>
+  <label class="btn g" style="text-align:center;cursor:pointer">&#128247; Photo chuno<input type="file" id="file" accept="image/*" hidden></label>
   <div class="media" id="pv" style="aspect-ratio:1"></div>
   <select id="flt">${Object.keys(FIL).map(n => `<option>${n}</option>`).join('')}</select>
   <textarea id="cap" rows="3" maxlength="300" placeholder="Caption likho..."></textarea>
-  <button class="btn" data-a="share2">Share karo</button></div>`;
+  <button class="btn" data-a="share">Share karo</button></div>`;
 }
 async function share() {
   if (!file) return toast('Pehle photo chuno');
@@ -137,14 +137,14 @@ async function share() {
 const cnt = async (col, id) => (await sb.from('follows').select('*', { count: 'exact', head: true }).eq(col, id)).count || 0;
 const fbtn = id => `<button class="btn ${fol.has(id) ? 'g' : ''}" data-a="follow" data-id="${id}">${fol.has(id) ? (pend.has(id) ? 'Requested' : 'Following') : 'Follow'}</button>`;
 async function profile() {
-  const { data: pr } = await sb.from('profiles').select('*').eq('username', pu || me.username).maybeSingle();
+  const { data: pr } = await sb.from('profiles').select('*').eq('username', pu || me.username).single();
   if (!pr) return '<div class="empty">User nahi mila</div>';
   const [po, fr, fg] = await Promise.all([sb.from('posts').select(Q).eq('user_id', pr.id).order('created_at', { ascending: false }), cnt('following_id', pr.id), cnt('follower_id', pr.id)]);
   if (po.error) toast(po.error.message);
   cache = po.data || []; const mine = pr.id === me.id;
   return `<div class="pro"><div class="top">${av(pr.username, 80)}<div class="stat"><div><b>${cache.length}</b>posts</div><div><b>${fr}</b>followers</div><div><b>${fg}</b>following</div></div></div>
   <div style="margin:10px 0"><b>${esc(pr.username)}</b><div>${esc(pr.bio || '')}</div></div>
-  ${mine ? '<button class="btn g" data-a="bio" style="width:100%">Bio badlo</button><button class="btn g" data-a="gosaved" style="width:100%;margin-top:8px">Saved posts</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account on/off</button><button class="btn g" data-a="out" style="width:100%;margin-top:8px">Logout</button>' : fbtn(pr.id).replace('class="btn', 'style="width:100%" class="btn') + '<button class="btn g" data-a="dmuser" data-id="' + pr.id + '" data-u="' + esc(pr.username) + '" style="width:100%;margin-top:8px">Message</button>'}</div>` + (pr.is_private && !mine && (!fol.has(pr.id) || pend.has(pr.id)) ? '<div class="empty">Ye account private hai. Posts dekhne ke liye follow request bhejo.</div>' : tiles(cache));
+  ${mine ? '<button class="btn g" data-a="bio" style="width:100%">Bio badlo</button><button class="btn g" data-a="gosaved" style="width:100%;margin-top:8px">Saved posts</button><button class="btn g" data-a="out" style="width:100%;margin-top:8px">Logout</button>' : fbtn(pr.id).replace('class="btn', 'style="width:100%" class="btn') + '<button class="btn g" data-a="dmuser" data-id="' + pr.id + '" data-u="' + esc(pr.username) + '" style="width:100%;margin-top:8px">Message</button>'}</div>` + tiles(cache);
 }
 async function follow(id) {
   if (fol.has(id)) { fol.delete(id); await sb.from('follows').delete().match({ follower_id: me.id, following_id: id }); }
