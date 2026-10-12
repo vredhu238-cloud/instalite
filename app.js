@@ -50,12 +50,12 @@ function go(v, u = null) { view = v; pu = u; closeOv(); render(); scrollTo(0, 0)
 async function render() {
   document.body.classList.remove('au');
   nav(); side();
-  const V = { home, explore, create, profile, activity };
+  if (typeof listen === 'function') listen(); const V = { home, explore, create, profile, activity, inbox, chat };
   $('#app').innerHTML = '<div class="empty">Load ho raha hai...</div>';
   $('#app').innerHTML = await V[view]();
 }
 function nav() {
-  const L = [['home','home','Home'],['search','explore','Search'],['plus','create','Create'],['heart','activity','Activity'],['user','profile','Profile']];
+  const L = [['home','home','Home'],['search','explore','Search'],['plus','create','Create'],['heart','activity','Activity'],['send','inbox','Messages'],['user','profile','Profile']];
   $('#nav').innerHTML = '<div class="slogo"><span class="logo"><i class="lg"></i>InstaLite</span></div>' +
     L.map(([i, v, l]) => `<button class="ic nv ${view === v && !pu ? 'on' : ''}" data-a="nav" data-v="${v}" aria-label="${l}"><svg viewBox="0 0 24 24">${ICO[i]}</svg><span class="lb">${l}</span></button>`).join('') +
     '<button class="ic nv th" data-a="theme" aria-label="Theme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg><span class="lb">Theme</span></button>';
