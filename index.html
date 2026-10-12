@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#d6249f">
+<link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
 <header><span class="logo"><i class="lg"></i>InstaLite</span><button data-a="theme" aria-label="Theme" style="font-size:20px">&#127763;</button></header>
@@ -23,5 +26,6 @@
 <script src="reels.js"></script>
 <script src="private.js"></script>
 <script src="app.js"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </body>
 </html>
