@@ -15,9 +15,9 @@
 .hr button{display:flex;position:relative;color:inherit;padding:0}
 .hr svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .hr .thm{margin-left:10px}
-.hr .thm svg{width:22px;height:22px}
 .hr .bdg{left:16px;top:-5px}
 @media(max-width:899px){
+  body:not([data-view="home"]) header{display:none}
   nav [data-v="create"],nav [data-v="activity"]{display:none}
   nav [data-v="home"]{order:1}
   nav [data-v="reels"]{order:2}
@@ -55,6 +55,7 @@
 <script src="reels.js"></script>
 <script src="private.js"></script>
 <script src="safety.js"></script>
+<script src="profile.js"></script>
 <script src="app.js"></script>
 <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </body>

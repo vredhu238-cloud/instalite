@@ -23,7 +23,8 @@ async function start() {
   me = r.data;
   const f = await sb.from('follows').select('following_id').eq('follower_id', me.id);
   fol = new Set((f.data || []).map(x => x.following_id));
-  go('home');
+  const want = new URLSearchParams(location.search).get('u');
+  if (want) { history.replaceState(null, '', location.pathname); go('profile', want.toLowerCase() === me.username ? null : want.toLowerCase()); } else go('home');
 }
 function authUI(m = 'login') {
   document.body.classList.add('au');
@@ -48,14 +49,14 @@ function authUI(m = 'login') {
 /* ---------- ROUTER ---------- */
 function go(v, u = null) { view = v; pu = u; closeOv(); render(); scrollTo(0, 0); }
 async function render() {
-  document.body.classList.remove('au');
+  document.body.classList.remove('au'); document.body.dataset.view = view;
   nav(); side();
   if (typeof listen === 'function') listen();
   await ensureSaves(); await ensureB(); badges();
   $('#app').innerHTML = '<div class="empty">Loading...</div>';
   let h;
   try {
-    const V = { home, explore, create, profile, activity: notifs, inbox, chat, saved, tag: tagPage, requests, reels };
+    const V = { home, explore, create, profile: profile2, activity: notifs, inbox, chat, saved, tag: tagPage, requests, reels };
     h = (view === 'home' && typeof storiesBar === 'function' ? await storiesBar() : '') + await V[view]();
   } catch (e) { console.error(e); h = '<div class="empty">This page failed to load: ' + esc(e.message) + '</div>'; }
   $('#app').innerHTML = h;
@@ -132,26 +133,11 @@ function create() {
 }
 const cnt = async (col, id) => (await sb.from('follows').select('*', { count: 'exact', head: true }).eq(col, id)).count || 0;
 const fbtn = id => `<button class="btn ${fol.has(id) ? 'g' : ''}" data-a="follow" data-id="${id}">${fol.has(id) ? (pend.has(id) ? 'Requested' : 'Following') : 'Follow'}</button>`;
-async function profile() {
-  const { data: pr } = await sb.from('profiles').select('*').eq('username', pu || me.username).maybeSingle();
-  if (!pr) return '<div class="empty">User not found</div>';
-  const [po, fr, fg] = await Promise.all([sb.from('posts').select(Q).eq('user_id', pr.id).order('created_at', { ascending: false }), cnt('following_id', pr.id), cnt('follower_id', pr.id)]);
-  if (po.error) toast(po.error.message);
-  cache = po.data || []; const mine = pr.id === me.id;
-  return `<div class="pro"><div class="top">${av(pr.username, 80)}<div class="stat"><div><b>${cache.length}</b>posts</div><div><b>${fr}</b>followers</div><div><b>${fg}</b>following</div></div></div>
-  <div style="margin:10px 0"><b>${esc(pr.username)}</b><div>${esc(pr.bio || '')}</div></div>
-  ${mine ? '<button class="btn g" data-a="bio" style="width:100%">Edit bio</button><button class="btn g" data-a="gosaved" style="width:100%;margin-top:8px">Saved posts</button><button class="btn g" data-a="gorequests" style="width:100%;margin-top:8px">Follow requests</button><button class="btn g" data-a="togpriv" style="width:100%;margin-top:8px">Private account: ' + (me.is_private ? 'ON' : 'OFF') + '</button><button class="btn g" data-a="out" style="width:100%;margin-top:8px">Logout</button>' : fbtn(pr.id).replace('class="btn', 'style="width:100%" class="btn') + '<button class="btn g" data-a="dmuser" data-id="' + pr.id + '" data-u="' + esc(pr.username) + '" style="width:100%;margin-top:8px">Message</button>'}</div>` + (pr.is_private && !mine && (!fol.has(pr.id) || pend.has(pr.id)) ? '<div class="empty">This account is private. Send a follow request to see their posts.</div>' : tiles(cache));
-}
 async function follow(id) {
   if (fol.has(id)) { fol.delete(id); await sb.from('follows').delete().match({ follower_id: me.id, following_id: id }); }
   else { fol.add(id); await sb.from('follows').insert({ follower_id: me.id, following_id: id }); }
   render();
 }
-async function bio() {
-  const v = prompt('Write your bio', me.bio || ''); if (v === null) return;
-  me.bio = v.slice(0, 120); await sb.from('profiles').update({ bio: me.bio }).eq('id', me.id); render();
-}
-
 /* ---------- EVENTS ---------- */
 const theme = () => { const d = document.documentElement, dark = getComputedStyle(d).getPropertyValue('--bg').trim() === '#000'; d.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('theme', d.dataset.theme); } catch (e) {} };
 try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
@@ -167,7 +153,6 @@ document.addEventListener('click', e => {
   else if (a === 'del') del(id);
   else if (a === 'open') openPost(id);
   else if (a === 'close') closeOv();
-  else if (a === 'bio') bio();
   else if (a === 'out') sb.auth.signOut().then(() => { me = null; fol = new Set(); closeOv(); authUI(); });
   else if (a === 'theme') theme();
   else if (a === 'shr') { try { navigator.clipboard.writeText(location.href); } catch (e) {} toast('Link copied'); }
