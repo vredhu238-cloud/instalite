@@ -12,11 +12,18 @@ async function storiesBar() {
     sSeen = new Set((v.data || []).map(x => x.story_id));
   }
   const tile = u => {
-    const all = SG[u].every(s => s.user_id === me.id || sSeen.has(s.id)), nm = u === me.id ? 'Your story' : (sNames[u] || '...');
+    const all = SG[u].every(s => s.user_id === me.id || sSeen.has(s.id)), nm = sNames[u] || '...';
     return `<button class="st" data-a="sview" data-id="${u}"><span class="ring ${all ? 'seen' : ''}">${av(nm, 56)}</span><span>${esc(nm)}</span></button>`;
   };
-  const add = `<label class="st" style="cursor:pointer"><span class="ring seen" style="position:relative">${av(me.username, 56)}<b style="position:absolute;right:-2px;bottom:-2px;background:var(--blue);color:#fff;width:20px;height:20px;border-radius:50%;text-align:center;line-height:20px">+</b></span><span>Add story</span><input type="file" id="sfile" accept="image/*" hidden></label>`;
-  return `<div class="stories">${add}${SG[me.id] ? tile(me.id) : ''}${uids.filter(u => u !== me.id).map(tile).join('')}</div>`;
+  const has = !!SG[me.id];
+  const plusCss = 'position:absolute;right:-2px;bottom:-2px;background:var(--blue);color:#fff;width:20px;height:20px;border-radius:50%;text-align:center;line-height:20px;font-weight:700;cursor:pointer;z-index:1';
+  const input = '<input type="file" id="sfile" accept="image/*" hidden>';
+  const ringMe = `<span class="ring ${has ? '' : 'seen'}">${av(me.username, 56)}</span>`;
+  const mine = '<div class="st"><span style="position:relative;display:inline-flex">' +
+    (has ? `<button data-a="sview" data-id="${me.id}" aria-label="View your story">${ringMe}</button><label style="${plusCss}" aria-label="Add story">+${input}</label>`
+         : `<label style="display:inline-flex;cursor:pointer" aria-label="Add story">${ringMe}<b style="${plusCss}">+</b>${input}</label>`) +
+    `</span><span>${has ? 'Your story' : 'Add story'}</span></div>`;
+  return `<div class="stories">${mine}${uids.filter(u => u !== me.id).map(tile).join('')}</div>`;
 }
 
 function openStory(uid) { if (!SG[uid]) return; sv = { list: SG[uid], i: 0, t: null }; showStory(); }
