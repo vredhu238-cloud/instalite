@@ -20,14 +20,14 @@ async function tagPage() {
 
 async function editCap(id) {
   const p = cache.find(x => x.id == id); if (!p) return;
-  const v = prompt('Caption badlo', p.caption || ''); if (v === null) return;
+  const v = prompt('Edit caption', p.caption || ''); if (v === null) return;
   const r = await sb.from('posts').update({ caption: v.slice(0, 300) }).eq('id', id);
   if (r.error) return toast(r.error.message);
-  p.caption = v.slice(0, 300); swap(p); toast('Caption badal gaya');
+  p.caption = v.slice(0, 300); swap(p); toast('Caption updated');
 }
 
 async function delCm(id) {
-  if (!confirm('Ye comment delete karein?')) return;
+  if (!confirm('Delete this comment?')) return;
   const r = await sb.from('comments').delete().eq('id', id);
   if (r.error) return toast(r.error.message);
   cache.forEach(p => { const i = p.comments.findIndex(c => c.id == id); if (i >= 0) { p.comments.splice(i, 1); swap(p); } });
@@ -35,8 +35,8 @@ async function delCm(id) {
 
 async function share2() {
   const fl = file && fileList.length ? fileList : [];
-  if (!fl.length) return toast('Pehle photo chuno');
-  toast('Upload ho raha hai...');
+  if (!fl.length) return toast('Choose a photo first');
+  toast('Uploading...');
   const urls = [];
   for (const f of fl) {
     const path = `${me.id}/${Date.now()}-${urls.length}.jpg`;
@@ -46,7 +46,7 @@ async function share2() {
   }
   const r = await sb.from('posts').insert({ user_id: me.id, image_url: urls[0], image_urls: urls.length > 1 ? urls : null, caption: $('#cap').value.trim(), filter: $('#flt').value });
   if (r.error) return toast(r.error.message);
-  fileList = []; toast('Post share ho gayi!'); go('home');
+  fileList = []; toast('Post shared!'); go('home');
 }
 
 document.addEventListener('click', e => {
@@ -61,7 +61,7 @@ document.addEventListener('click', e => {
 document.addEventListener('change', async e => {
   if (e.target.id !== 'files' || !e.target.files.length) return;
   const fs = [...e.target.files].slice(0, 5);
-  toast('Photos taiyaar ho rahi hain...');
+  toast('Preparing photos...');
   fileList = await Promise.all(fs.map(shrink)); file = fileList[0];
   $('#pv').innerHTML = `<img src="${URL.createObjectURL(fileList[0])}" alt="Preview" style="filter:${FIL[$('#flt').value] || 'none'}">${fileList.length > 1 ? `<span class="cnt">${fileList.length} photos</span>` : ''}`;
 });

@@ -24,15 +24,15 @@ async function badges() {
   if (xCh) sb.removeChannel(xCh);
   xFor = me.id;
   xCh = sb.channel('x-' + me.id)
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${me.id}` }, () => { toast('Nayi notification'); badges(); if (view === 'activity') render(); })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${me.id}` }, () => { toast('New notification'); badges(); if (view === 'activity') render(); })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${me.id}` }, () => badges())
     .subscribe();
 }
 
 async function toggleSave(id) {
   id = +id;
-  if (mySaves.has(id)) { mySaves.delete(id); await sb.from('saves').delete().match({ user_id: me.id, post_id: id }); toast('Saved se hata diya'); }
-  else { mySaves.add(id); await sb.from('saves').insert({ user_id: me.id, post_id: id }); toast('Post save ho gayi'); }
+  if (mySaves.has(id)) { mySaves.delete(id); await sb.from('saves').delete().match({ user_id: me.id, post_id: id }); toast('Removed from saved'); }
+  else { mySaves.add(id); await sb.from('saves').insert({ user_id: me.id, post_id: id }); toast('Post saved'); }
   const p = cache.find(x => x.id == id); if (p) swap(p);
 }
 async function saved() {
@@ -49,11 +49,11 @@ async function notifs() {
   const list = data || [], ids = [...new Set(list.map(n => n.actor_id))], nm = {};
   if (ids.length) ((await sb.from('profiles').select('id,username').in('id', ids)).data || []).forEach(p => nm[p.id] = p.username);
   sb.from('notifications').update({ read: true }).eq('user_id', me.id).eq('read', false).then(() => setBdg('activity', 0));
-  const T = { like: 'ne aapki post like ki', comment: 'ne comment kiya', follow: 'ne aapko follow kiya', request: 'ne aapko follow request bheji' };
+  const T = { like: 'liked your post', comment: 'commented', follow: 'started following you', request: 'sent you a follow request' };
   return '<div style="padding:14px"><b style="font-size:18px">Notifications</b></div>' + (list.length ? list.map(n => {
     const u = nm[n.actor_id] || 'user';
     return `<div class="row"${n.read ? '' : ' style="background:var(--card)"'}>${av(u, 40)}<span><b data-a="prof" data-u="${esc(u)}" style="cursor:pointer">${esc(u)}</b> ${T[n.type] || ''}${n.body ? ': ' + esc(n.body) : ''} <small style="color:var(--mut)">${ago(n.created_at)}</small></span></div>`;
-  }).join('') : '<div class="empty">Abhi koi notification nahi</div>');
+  }).join('') : '<div class="empty">No notifications yet</div>');
 }
 
 document.addEventListener('click', e => {

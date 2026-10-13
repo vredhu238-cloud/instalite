@@ -10,19 +10,19 @@ async function requests() {
   const list = data || [], nm = {};
   if (list.length) ((await sb.from('profiles').select('id,username').in('id', list.map(x => x.follower_id))).data || []).forEach(p => nm[p.id] = p.username);
   return '<div class="row" style="border-bottom:1px solid var(--line)"><button data-a="nav" data-v="profile" aria-label="Back" style="font-size:22px">&larr;</button><b>Follow requests</b></div>' +
-    (list.length ? list.map(x => { const u = nm[x.follower_id] || 'user'; return `<div class="row">${av(u, 44)}<b class="sp" data-a="prof" data-u="${esc(u)}" style="cursor:pointer">${esc(u)}</b><button class="btn" data-a="acc" data-id="${x.follower_id}">Accept</button><button class="btn g" data-a="rej" data-id="${x.follower_id}">Reject</button></div>`; }).join('') : '<div class="empty">Koi pending request nahi</div>');
+    (list.length ? list.map(x => { const u = nm[x.follower_id] || 'user'; return `<div class="row">${av(u, 44)}<b class="sp" data-a="prof" data-u="${esc(u)}" style="cursor:pointer">${esc(u)}</b><button class="btn" data-a="acc" data-id="${x.follower_id}">Accept</button><button class="btn g" data-a="rej" data-id="${x.follower_id}">Decline</button></div>`; }).join('') : '<div class="empty">No pending requests</div>');
 }
 async function answerReq(id, ok) {
   const t = sb.from('follows');
   const r = ok ? await t.update({ status: 'accepted' }).match({ follower_id: id, following_id: me.id }) : await t.delete().match({ follower_id: id, following_id: me.id });
   if (r.error) return toast(r.error.message);
-  toast(ok ? 'Request accept ho gayi' : 'Request reject ho gayi'); render();
+  toast(ok ? 'Request accepted' : 'Request declined'); render();
 }
 async function togPriv() {
   const v = !me.is_private;
   const r = await sb.from('profiles').update({ is_private: v }).eq('id', me.id);
   if (r.error) return toast(r.error.message);
-  me.is_private = v; toast(v ? 'Account ab Private hai' : 'Account ab Public hai');
+  me.is_private = v; toast(v ? 'Account is now Private' : 'Account is now Public'); render();
 }
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-a]'); if (!b) return;
