@@ -39,7 +39,7 @@ async function profile2() {
     ? '<button class="btn g" data-a="editprof">Edit profile</button><button class="btn g" data-a="shareprof">Share profile</button><button class="btn g" data-a="nav" data-v="explore" aria-label="Find people" style="flex:0 0 46px"><svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M19 8v6M16 11h6"/></svg></button>'
     : fbtn(pr.id) + `<button class="btn g" data-a="dmuser" data-id="${pr.id}" data-u="${esc(pr.username)}">Message</button>` + (typeof toggleBlock === 'function' ? `<button class="btn g" data-a="blk" data-id="${pr.id}" data-u="${esc(pr.username)}" style="flex:0 0 auto;padding:8px 14px">Block</button>` : '');
   const hlRow = !locked && (mine || HL.length)
-    ? `<div class="hl">${mine ? '<label class="it"><span class="c">+</span><span class="t">New</span><input type="file" id="hfile" accept="image/*" hidden></label>' : ''}${HL.map(h => `<button class="it" data-a="hlopen" data-id="${h.id}"><span class="c"><img src="${h.image_url}" alt=""></span><span class="t">${esc(h.title)}</span></button>`).join('')}</div>` : '';
+    ? `<div class="hl">${mine ? '<button class="it" data-a="hlnew"><span class="c">+</span><span class="t">New</span></button>' : ''}${HL.map(h => `<button class="it" data-a="hlopen" data-id="${h.id}"><span class="c"><img src="${h.image_url}" alt=""></span><span class="t">${esc(h.title)}</span></button>`).join('')}</div>` : '';
   const tabs = `<div class="ptabs">${PT.map(([k, l, p]) => `<button data-a="ptab" data-t="${k}" aria-label="${l}" class="${ptab === k ? 'on' : ''}"><svg viewBox="0 0 24 24">${p}</svg></button>`).join('')}</div>`;
   return top + `<div class="pro" style="padding-top:8px"><div class="top">${av(pr.username, 86)}<div class="stat"><div><b>${posts.length}</b>posts</div><div><b>${fr}</b>followers</div><div><b>${fg}</b>following</div></div></div>
   <div style="margin:10px 0"><b>${esc(pr.full_name || pr.username)}</b><div style="white-space:pre-wrap">${esc(pr.bio || '')}</div></div><div class="prow">${btns}</div></div>` + hlRow + tabs + body;
@@ -81,17 +81,75 @@ async function shareProf() {
   toast('Profile link copied');
 }
 
+let hv = null, selUrls = [], hcList = [];
+
 function openHl(id) {
   const h = HL.find(x => x.id == id); if (!h) return;
-  const o = document.createElement('div'); o.className = 'ov sv'; o.dataset.a = 'hlclose';
-  o.innerHTML = `<button data-a="hlclose" aria-label="Close" style="position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:14px;color:#fff;font-size:30px;z-index:3">&times;</button><div class="who" style="z-index:2">${esc(h.title)}</div><img src="${h.image_url}" alt="${esc(h.title)}" style="max-width:100%;max-height:100%;object-fit:contain">${h.user_id === me.id ? `<div class="cap" style="font-size:14px;bottom:24px;z-index:3"><button data-a="hldel" data-id="${h.id}" style="color:#fff;text-decoration:underline">Delete highlight</button></div>` : ''}`;
-  document.body.appendChild(o);
+  hv = { h, list: h.images && h.images.length ? h.images : [h.image_url], i: 0, t: null };
+  showHl();
 }
+function showHl() {
+  const { h, list, i } = hv;
+  const o = document.createElement('div'); o.className = 'ov sv'; o.dataset.a = 'hnext';
+  o.innerHTML = `<div style="position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:10px;right:10px;display:flex;gap:4px;z-index:2">${list.map((_, k) => `<div style="flex:1;height:3px;background:rgba(255,255,255,.3)">${k < i ? '<i style="display:block;height:100%;background:#fff"></i>' : k === i ? '<i style="display:block;height:100%;background:#fff;animation:fill 5s linear forwards"></i>' : ''}</div>`).join('')}</div>
+  <div class="who" style="z-index:2">${esc(h.title)}</div>
+  <button data-a="hclose" aria-label="Close" style="position:absolute;top:calc(20px + env(safe-area-inset-top,0px));right:14px;color:#fff;font-size:30px;z-index:3">&times;</button>
+  <img src="${list[i]}" alt="${esc(h.title)}" style="max-width:100%;max-height:100%;object-fit:contain">
+  ${h.user_id === me.id ? `<div class="cap" style="font-size:14px;bottom:24px;z-index:3"><button data-a="hldel" data-id="${h.id}" style="color:#fff;text-decoration:underline">Delete highlight</button></div>` : ''}`;
+  document.querySelectorAll('.ov.sv').forEach(x => x.remove()); document.body.appendChild(o);
+  clearTimeout(hv.t); hv.t = setTimeout(hlNext, 5000);
+}
+function hlNext() { if (!hv) return; if (hv.i < hv.list.length - 1) { hv.i++; showHl(); } else hlClose(); }
+function hlPrev() { if (!hv) return; if (hv.i > 0) hv.i--; showHl(); }
+function hlClose() { if (hv) clearTimeout(hv.t); hv = null; document.querySelectorAll('.ov.sv').forEach(x => x.remove()); }
 async function delHl(id) {
   if (!confirm('Delete this highlight?')) return;
   const r = await sb.from('highlights').delete().eq('id', id);
   if (r.error) return toast(r.error.message);
-  closeOv(); toast('Highlight deleted'); render();
+  hlClose(); closeOv(); toast('Highlight deleted'); render();
+}
+
+async function openArchive() {
+  const r = await sb.from('stories').select('id,image_url,created_at').eq('user_id', me.id).order('created_at', { ascending: false }).limit(60);
+  if (r.error) return toast(r.error.message);
+  const list = r.data || []; selUrls = [];
+  const o = document.createElement('div'); o.className = 'ov ar';
+  o.innerHTML = `<div class="in"><div class="row" style="border-bottom:1px solid var(--line)"><button data-a="close" aria-label="Back" style="font-size:22px">&larr;</button><b class="sp">Select stories</b><button data-a="arnext" style="color:var(--blue);font-weight:700">Next</button></div>
+  ${list.length ? `<div class="grid">${list.map(s => `<div class="tile" data-a="arsel" data-u="${s.image_url}" style="position:relative"><img src="${s.image_url}" alt=""><span class="ck" style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.25)"></span></div>`).join('')}</div>` : '<div class="empty">No stories yet. Post a story first, then add it to a highlight.</div>'}</div>`;
+  document.body.appendChild(o);
+}
+async function saveHl(urls, title) {
+  const r = await sb.from('highlights').insert({ user_id: me.id, title, image_url: urls[0], images: urls });
+  if (r.error) { toast(r.error.message); return false; }
+  return true;
+}
+async function pickName() {
+  if (!selUrls.length) return toast('Select at least one story');
+  const title = (prompt('Highlight name (max 20 characters)', 'Highlights') || '').trim().slice(0, 20);
+  if (!title) return;
+  if (await saveHl(selUrls, title)) { closeOv(); toast('Highlight added'); render(); }
+}
+
+async function hlChooser() {
+  if (!sv) return; clearTimeout(sv.t);
+  const url = sv.list[sv.i].image_url;
+  hcList = (await sb.from('highlights').select('*').eq('user_id', me.id).order('created_at')).data || [];
+  const o = document.createElement('div'); o.className = 'ov hc'; o.style.zIndex = 40; o.dataset.url = url;
+  o.innerHTML = `<div class="in"><div class="row" style="border-bottom:1px solid var(--line)"><button data-a="hcclose" aria-label="Back" style="font-size:22px">&larr;</button><b>Add to highlight</b></div>${hcList.map(h => `<button class="row" data-a="hcadd" data-id="${h.id}" style="width:100%;text-align:left;padding:14px;border-bottom:1px solid var(--line)">${esc(h.title)} <small style="color:var(--mut)">(${(h.images && h.images.length) || 1})</small></button>`).join('')}<button class="row" data-a="hcnew" style="width:100%;text-align:left;padding:14px;color:var(--blue);font-weight:600">+ New highlight</button></div>`;
+  document.body.appendChild(o);
+}
+function hcDone(msg) { document.querySelectorAll('.ov.hc').forEach(x => x.remove()); if (msg) toast(msg); if (sv) showStory(); }
+async function hcAdd(id) {
+  const url = document.querySelector('.ov.hc').dataset.url, h = hcList.find(x => x.id == id), imgs = h.images && h.images.length ? h.images : [h.image_url];
+  if (imgs.includes(url)) return hcDone('Already in this highlight');
+  const r = await sb.from('highlights').update({ images: [...imgs, url] }).eq('id', id);
+  hcDone(r.error ? r.error.message : 'Added to highlight');
+}
+async function hcNew() {
+  const url = document.querySelector('.ov.hc').dataset.url;
+  const title = (prompt('Highlight name (max 20 characters)', 'Highlights') || '').trim().slice(0, 20);
+  if (!title) return;
+  hcDone((await saveHl([url], title)) ? 'Highlight added' : '');
 }
 
 document.addEventListener('click', e => {
@@ -104,19 +162,26 @@ document.addEventListener('click', e => {
   else if (a === 'shareprof') shareProf();
   else if (a === 'ptab') { ptab = b.dataset.t; render(); }
   else if (a === 'hlopen') openHl(b.dataset.id);
-  else if (a === 'hlclose') closeOv();
+  else if (a === 'hnext') (e.clientX < innerWidth / 3 ? hlPrev : hlNext)();
+  else if (a === 'hclose') hlClose();
   else if (a === 'hldel') delHl(b.dataset.id);
+  else if (a === 'hlnew') openArchive();
+  else if (a === 'arsel') {
+    const u = b.dataset.u, i = selUrls.indexOf(u);
+    if (i < 0) selUrls.push(u); else selUrls.splice(i, 1);
+    b.querySelector('.ck').style.background = i < 0 ? 'var(--blue)' : 'rgba(0,0,0,.25)';
+    const nx = document.querySelector('.ov.ar [data-a="arnext"]'); if (nx) nx.textContent = selUrls.length ? `Next (${selUrls.length})` : 'Next';
+  }
+  else if (a === 'arnext') pickName();
+  else if (a === 'tohl') hlChooser();
+  else if (a === 'hcclose') hcDone('');
+  else if (a === 'hcadd') hcAdd(b.dataset.id);
+  else if (a === 'hcnew') hcNew();
 });
 
-document.addEventListener('change', async e => {
-  if (e.target.id !== 'hfile' || !e.target.files[0]) return;
-  const title = (prompt('Highlight name (max 20 characters)', 'Highlights') || '').trim().slice(0, 20);
-  if (!title) return;
-  toast('Uploading highlight...');
-  const blob = await shrink(e.target.files[0]), path = `${me.id}/h-${Date.now()}.jpg`;
-  const up = await sb.storage.from('posts').upload(path, blob, { contentType: 'image/jpeg' });
-  if (up.error) return toast(up.error.message);
-  const r = await sb.from('highlights').insert({ user_id: me.id, title, image_url: sb.storage.from('posts').getPublicUrl(path).data.publicUrl });
-  if (r.error) return toast(r.error.message);
-  toast('Highlight added'); render();
-});
+/* Apni story kholne par "Highlight" button apne aap judta hai (stories.js ko chhedna nahi padta) */
+new MutationObserver(() => {
+  const v = document.getElementById('sviews');
+  if (v && !document.querySelector('[data-a="tohl"]'))
+    v.insertAdjacentHTML('afterend', '<button data-a="tohl" style="color:#fff;margin-left:18px;text-decoration:underline">Highlight</button>');
+}).observe(document.body, { childList: true, subtree: true });
