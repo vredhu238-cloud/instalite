@@ -1,4 +1,5 @@
 /* Direct Messages: realtime chat (dm.js) */
+document.head.insertAdjacentHTML('beforeend', '<style>@media(max-width:899px){body:has(#dmi) nav,body:has(#dmi) header{display:none!important}#app:has(#dmi){padding-bottom:0;min-height:0;height:100vh;height:100dvh;display:flex;flex-direction:column}#app:has(#dmi) #msgs{flex:1;height:auto!important;min-height:0}}</style>');
 let cp = null, dmCh = null, dmFor = null;
 const peers = {};
 const dmNames = async ids => { const need = ids.filter(i => !peers[i]); if (!need.length) return; const { data } = await sb.from('profiles').select('id,username').in('id', need); (data || []).forEach(p => peers[p.id] = p.username); };
@@ -36,10 +37,10 @@ async function chat() {
   const { data, error } = await sb.from('messages').select('*').or(`and(sender_id.eq.${me.id},receiver_id.eq.${cp.id}),and(sender_id.eq.${cp.id},receiver_id.eq.${me.id})`).order('created_at').limit(200);
   if (error) toast(error.message);
   await sb.from('messages').update({ read: true }).eq('receiver_id', me.id).eq('sender_id', cp.id).eq('read', false);
-  setTimeout(() => { const b = $('#msgs'); if (b) b.scrollTop = b.scrollHeight; const i = $('#dmi'); if (i) i.focus(); }, 80);
+  setTimeout(() => { const b = $('#msgs'); if (b) b.scrollTop = b.scrollHeight; const i = $('#dmi'); if (i && !matchMedia('(pointer:coarse)').matches) i.focus(); }, 80);
   return `<div class="row" style="border-bottom:1px solid var(--line)"><button data-a="dmback" aria-label="Back" style="font-size:22px">&larr;</button>${av(cp.username, 32)}<b data-a="prof" data-u="${esc(cp.username)}" style="cursor:pointer">${esc(cp.username)}</b></div>
   <div id="msgs" style="padding:12px;height:calc(100vh - 230px);overflow-y:auto;display:flex;flex-direction:column;gap:6px">${(data || []).map(bub).join('') || '<div class="empty">Send the first message</div>'}</div>
-  <div class="cin" style="padding:8px 12px"><input id="dmi" placeholder="Message..." maxlength="500"><button data-a="dmsend">Send</button></div>`;
+  <div class="cin" style="padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px))"><input id="dmi" placeholder="Message..." maxlength="500"><button data-a="dmsend">Send</button></div>`;
 }
 
 async function dmSend() {
