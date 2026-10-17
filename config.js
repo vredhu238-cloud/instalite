@@ -2,5 +2,6 @@
 // anon key public hoti hai (RLS se safe). service_role key KABHI yahan mat daalna.
 window.CONFIG = {
   SUPABASE_URL: 'https://qzuzfpxuzlzvttchsayq.supabase.co',
-  SUPABASE_ANON_KEY: 'sb_publishable_AfzAzlaJHgWSJDzF2Rlj1g_sD4qzVFF'
+  SUPABASE_ANON_KEY: 'sb_publishable_AfzAzlaJHgWSJDzF2Rlj1g_sD4qzVFF',
+  ADMIN_ID: '6d314136-96fe-4b2b-9add-7c0078be9954'
 };
