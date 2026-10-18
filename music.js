@@ -1,5 +1,5 @@
 /* Story music: your own royalty-free library + your own song (music.js) */
-let comp = null, mAud = null, pvAud = null, mTracks = [], mSel = null, mGenre = '', mT = null;
+let comp = null, mAud = null, pvAud = null, mTracks = [], mSel = null, mGenre = '', mT = null, lkInfo = null;
 const GEN = [['All', ''], ['Pop', 'pop'], ['Hip hop', 'hiphop'], ['Chill', 'chill'], ['Rock', 'rock'], ['Electronic', 'electronic'], ['Folk', 'folk']];
 const fmtT = s => `${Math.floor(s / 60)}:${String(Math.floor(s) % 60).padStart(2, '0')}`;
 const isAdmin = () => !!(me && window.CONFIG && window.CONFIG.ADMIN_ID === me.id);
@@ -13,7 +13,7 @@ document.addEventListener('change', e => {
 async function openComposer(file) {
   toast('Preparing photo...');
   const blob = await shrink(file);
-  comp = { blob, music: null };
+  comp = { blob, music: null, link: null };
   const o = document.createElement('div'); o.className = 'scomp';
   o.style.cssText = 'position:fixed;inset:0;z-index:72;background:#000;color:#fff;display:flex;flex-direction:column';
   o.innerHTML = `<div style="display:flex;align-items:center;gap:12px;padding:calc(12px + env(safe-area-inset-top,0px)) 14px 8px"><button data-a="scancel" aria-label="Back" style="font-size:26px;color:#fff">&larr;</button><b>New story</b></div>
@@ -27,8 +27,8 @@ async function openComposer(file) {
 function closeComposer() { stopPreview(); comp = null; document.querySelectorAll('.scomp,.mpick').forEach(x => x.remove()); }
 function renderMusicInfo() {
   const el = $('#minfo'), add = $('#maddb'); if (!el || !comp) return;
-  const m = comp.music; if (add) add.style.display = m ? 'none' : 'block';
-  el.innerHTML = m ? `<div style="display:flex;align-items:center;gap:10px">${m.cover ? `<img src="${m.cover}" alt="" style="width:40px;height:40px;border-radius:8px;object-fit:cover">` : ''}<b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">&#9835; ${esc(m.title)}</b><button data-a="mopen" style="color:#7db7ff">Change</button><button data-a="mremove" style="color:#ff6b81">Remove</button></div>` : '';
+  const m = comp.music, l = comp.link, x = m || l; if (add) add.style.display = x ? 'none' : 'block';
+  el.innerHTML = x ? `<div style="display:flex;align-items:center;gap:10px">${x.cover ? `<img src="${esc(x.cover)}" alt="" style="width:40px;height:40px;border-radius:8px;object-fit:cover">` : ''}<b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">&#9835; ${esc(x.title)}${l ? ' <small style="opacity:.7">(' + esc(l.host) + ' link)</small>' : ''}</b><button data-a="mopen" style="color:#7db7ff">Change</button><button data-a="mremove" style="color:#ff6b81">Remove</button></div>` : '';
 }
 
 /* ---------- music picker ---------- */
@@ -41,6 +41,7 @@ function openMusicPicker() {
   <div style="padding:4px 14px"><input id="mq" placeholder="Search music" autocomplete="off" style="width:100%;background:#262626;border:0;border-radius:10px;padding:10px 12px;color:#fff;font:inherit;outline:none"></div>
   <div id="mgen" style="display:flex;gap:8px;overflow-x:auto;padding:10px 14px;scrollbar-width:none">${genHtml()}</div>
   <label style="display:block;padding:12px 14px;border-top:1px solid #262626;border-bottom:1px solid #262626;cursor:pointer;color:#7db7ff">Use a song from my phone<input type="file" id="mfile" accept="audio/*" hidden></label>
+  <button data-a="mlk" style="display:block;width:100%;text-align:left;padding:12px 14px;border-bottom:1px solid #262626;color:#ffb86b">Share a song link (YouTube, Spotify...)</button>
   ${isAdmin() ? '<button data-a="madd" style="display:block;width:100%;text-align:left;padding:12px 14px;border-bottom:1px solid #262626;color:#7bd88f">+ Add song to library (admin)</button>' : ''}
   <div id="mlst2" style="flex:1;overflow-y:auto"></div>
   <div id="mclip" style="display:none;padding:12px 14px calc(14px + env(safe-area-inset-bottom,0px));background:#1b1b1b"></div>`;
@@ -82,8 +83,63 @@ function pickFile(f) {
 }
 document.addEventListener('input', e => {
   if (e.target.id === 'mq') { clearTimeout(mT); mT = setTimeout(loadTracks, 450); }
+  else if (e.target.id === 'lk-url') { clearTimeout(mT); mT = setTimeout(checkLink, 500); }
   else if (e.target.id === 'mrange' && mSel) { const v = +e.target.value; mSel.start = v; $('#cst2').textContent = fmtT(v); if (pvAud) pvAud.currentTime = v; }
 });
+
+/* ---------- song link card (YouTube, Spotify, ...) ---------- */
+const OKH = ['youtube.com', 'youtu.be', 'spotify.com', 'spotify.link', 'jiosaavn.com', 'gaana.com', 'wynk.in', 'soundcloud.com'];
+function parseLink(raw) {
+  let u; try { u = new URL(String(raw).trim()); } catch (e) { return null; }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+  const h = u.hostname.replace(/^(www|m)\./, '');
+  if (!OKH.some(d => h === d || h.endsWith('.' + d))) return null;
+  let yt = '';
+  if (h === 'youtu.be') yt = u.pathname.slice(1).split('/')[0];
+  else if (h.endsWith('youtube.com')) yt = u.searchParams.get('v') || (u.pathname.match(/\/(shorts|embed|live)\/([\w-]{6,})/) || [])[2] || '';
+  const host = h.endsWith('youtube.com') || h === 'youtu.be' ? 'YouTube' : h.endsWith('spotify.com') || h === 'spotify.link' ? 'Spotify' : h.endsWith('jiosaavn.com') ? 'JioSaavn' : h.endsWith('gaana.com') ? 'Gaana' : h.endsWith('wynk.in') ? 'Wynk' : 'SoundCloud';
+  return { url: u.href, host, cover: yt ? `https://img.youtube.com/vi/${yt}/hqdefault.jpg` : '' };
+}
+async function fetchMeta(info) {
+  const ep = info.host === 'YouTube' ? 'https://www.youtube.com/oembed?format=json&url=' : info.host === 'Spotify' ? 'https://open.spotify.com/oembed?url=' : '';
+  if (!ep) return {};
+  try {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), 6000);
+    const r = await fetch(ep + encodeURIComponent(info.url), { signal: c.signal }); clearTimeout(t);
+    const j = await r.json(); return { title: j.title || '', cover: j.thumbnail_url || '' };
+  } catch (e) { return {}; }
+}
+function openLinkForm() {
+  stopPreview(); lkInfo = null;
+  const o = document.createElement('div'); o.className = 'mpick mlkf';
+  o.style.cssText = 'position:fixed;inset:0;z-index:85;background:#111;color:#fff;overflow:auto';
+  const I = 'width:100%;background:#262626;border:0;border-radius:10px;padding:10px 12px;color:#fff;font:inherit;outline:none';
+  o.innerHTML = `<div style="display:flex;align-items:center;gap:12px;padding:calc(12px + env(safe-area-inset-top,0px)) 14px 8px"><button data-a="mlkx" aria-label="Back" style="font-size:26px;color:#fff">&larr;</button><b style="font-size:18px">Share a song link</b></div>
+  <div style="padding:10px 14px;display:grid;gap:12px">
+    <input id="lk-url" placeholder="Paste a YouTube, Spotify, JioSaavn, Gaana, Wynk or SoundCloud link" autocomplete="off" style="${I}">
+    <div id="lk-card" style="display:none;align-items:center;gap:10px;background:#1b1b1b;border-radius:12px;padding:10px"></div>
+    <input id="lk-title" placeholder="Song name (filled automatically if possible)" maxlength="60" style="${I}">
+    <button class="btn" data-a="mlkuse">Use this link</button>
+    <small style="opacity:.7">Viewers tap the song name on your story to open it in YouTube or Spotify. The song does not play inside InstaLite.</small></div>`;
+  document.body.appendChild(o);
+}
+async function checkLink() {
+  const v = ($('#lk-url') || {}).value || '', card = $('#lk-card'); if (!card) return;
+  const info = parseLink(v); lkInfo = info;
+  if (!info) { card.style.display = 'none'; if (v.trim()) toast('Use a link from YouTube, Spotify, JioSaavn, Gaana, Wynk or SoundCloud'); return; }
+  const draw = () => { card.style.display = 'flex'; card.innerHTML = `${info.cover ? `<img src="${esc(info.cover)}" alt="" style="width:54px;height:54px;border-radius:8px;object-fit:cover">` : ''}<div><b>${esc(info.host)} link</b><div style="opacity:.7;font-size:13px">Link looks good</div></div>`; };
+  draw();
+  const m = await fetchMeta(info); if (lkInfo !== info) return;
+  const t = $('#lk-title'); if (m.title && t && !t.value) t.value = m.title.slice(0, 60);
+  if (m.cover) { info.cover = m.cover; draw(); }
+}
+function useLink() {
+  if (!lkInfo || !comp) return toast('Paste a valid song link first');
+  const title = (($('#lk-title') || {}).value || '').trim().slice(0, 60);
+  if (!title) return toast('Type the song name');
+  comp.link = { url: lkInfo.url, title, cover: lkInfo.cover || '', host: lkInfo.host }; comp.music = null;
+  document.querySelectorAll('.mpick').forEach(x => x.remove()); stopPreview(); renderMusicInfo();
+}
 
 /* ---------- admin: add / delete songs in the library ---------- */
 function openAdminAdd() {
@@ -144,6 +200,7 @@ async function shareStory() {
     }
     row.music_url = url; row.music_title = c.music.title; row.music_cover = c.music.cover || null; row.music_start = c.music.start || 0;
   }
+  if (c.link) { row.link_url = c.link.url; row.link_title = c.link.title; row.link_cover = c.link.cover || null; }
   const r = await sb.from('stories').insert(row);
   if (r.error) return fail(r.error.message);
   closeComposer(); toast('Story posted!'); render();
@@ -157,27 +214,37 @@ document.addEventListener('click', e => {
   else if (a === 'mpclose') { stopPreview(); document.querySelectorAll('.mpick').forEach(x => x.remove()); }
   else if (a === 'mgen') { mGenre = b.dataset.t; $('#mgen').innerHTML = genHtml(); loadTracks(); }
   else if (a === 'mtrack') { const t = mTracks[+b.dataset.i]; mSel = { id: t.id, name: t.title, artist_name: t.artist, image: t.cover_url || '', audio: t.audio_url, duration: t.duration || 60, start: 0 }; playPreview(mSel.audio, 0); showClip(); }
+  else if (a === 'mlk') openLinkForm();
+  else if (a === 'mlkx') document.querySelectorAll('.mlkf').forEach(x => x.remove());
+  else if (a === 'mlkuse') useLink();
+  else if (a === 'mlink') { const u = parseLink(b.dataset.url); if (u) { if (typeof sv !== 'undefined' && sv) clearTimeout(sv.t); window.open(u.url, '_blank', 'noopener'); } }
   else if (a === 'madd') openAdminAdd();
   else if (a === 'madmx') document.querySelectorAll('.madm').forEach(x => x.remove());
   else if (a === 'madmsave') saveTrack();
   else if (a === 'mdel') delTrack();
   else if (a === 'muse') {
     if (!mSel || !comp) return;
-    comp.music = { url: mSel.audio, file: mSel.file || null, title: mSel.artist_name === 'My song' ? mSel.name : `${mSel.name} - ${mSel.artist_name}`, cover: mSel.image || '', start: mSel.start || 0 };
+    comp.link = null; comp.music = { url: mSel.audio, file: mSel.file || null, title: mSel.artist_name === 'My song' ? mSel.name : `${mSel.name} - ${mSel.artist_name}`, cover: mSel.image || '', start: mSel.start || 0 };
     stopPreview(); document.querySelectorAll('.mpick').forEach(x => x.remove()); renderMusicInfo();
   }
-  else if (a === 'mremove') { if (comp) comp.music = null; renderMusicInfo(); }
+  else if (a === 'mremove') { if (comp) { comp.music = null; comp.link = null; } renderMusicInfo(); }
   else if (a === 'sshare') shareStory();
 });
 
 /* Story dekhte waqt gaana chalao */
 function stopMusic() { if (mAud) { mAud.pause(); mAud = null; } document.querySelectorAll('.mchip').forEach(x => x.remove()); }
 async function playStoryMusic(o, s) {
-  const r = await sb.from('stories').select('music_url,music_title,music_cover,music_start').eq('id', s.id).maybeSingle();
-  const m = r.data; if (!m || !m.music_url || !o.isConnected) return;
+  const r = await sb.from('stories').select('music_url,music_title,music_cover,music_start,link_url,link_title,link_cover').eq('id', s.id).maybeSingle();
+  const m = r.data; if (!m || !o.isConnected) return;
+  const base = 'position:absolute;top:calc(56px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.5);padding:5px 14px 5px 6px;border-radius:20px;font-size:13px;z-index:3;max-width:86%;color:#fff';
+  if (m.link_url) {
+    o.insertAdjacentHTML('beforeend', `<button class="mchip" data-a="mlink" data-url="${esc(m.link_url)}" style="${base};cursor:pointer">${m.link_cover ? `<img src="${esc(m.link_cover)}" alt="" style="width:26px;height:26px;border-radius:6px;object-fit:cover">` : '&#9835;'}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.link_title || 'Song')}</span><b style="color:#7db7ff">Listen</b></button>`);
+    return;
+  }
+  if (!m.music_url) return;
   const a = new Audio(m.music_url); a.preload = 'auto'; a.loop = true; mAud = a;
   a.addEventListener('loadedmetadata', () => { try { a.currentTime = m.music_start || 0; } catch (e) {} a.play().catch(() => {}); });
-  o.insertAdjacentHTML('beforeend', `<div class="mchip" style="position:absolute;top:calc(56px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.5);padding:5px 14px 5px 6px;border-radius:20px;font-size:13px;z-index:3;max-width:86%">${m.music_cover ? `<img src="${m.music_cover}" alt="" style="width:26px;height:26px;border-radius:6px;object-fit:cover">` : '&#9835;'}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.music_title || 'Music')}</span></div>`);
+  o.insertAdjacentHTML('beforeend', `<div class="mchip" style="${base}">${m.music_cover ? `<img src="${esc(m.music_cover)}" alt="" style="width:26px;height:26px;border-radius:6px;object-fit:cover">` : '&#9835;'}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.music_title || 'Music')}</span></div>`);
 }
 new MutationObserver(() => {
   const o = document.querySelector('.ov.sv[data-a="snext"]');
