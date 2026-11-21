@@ -28,7 +28,7 @@ jobs:
 
     - name: Initialize Bubblewrap Project
       run: |
-        bubblewrap init --manifest="https://vredhu238-cloud.github.io/instalite/manifest.json" --directory=./android-app
+        bubblewrap init --yes --manifest="https://vredhu238-cloud.github.io/instalite/manifest.json" --directory=./android-app
 
     - name: Build APK
       run: |
